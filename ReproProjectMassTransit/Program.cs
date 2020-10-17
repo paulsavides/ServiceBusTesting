@@ -22,7 +22,7 @@ namespace ReproProjectMassTransit
       };
 
       var loggerFactory = new ServiceCollection()
-        .AddLogging(loggingOptions => loggingOptions.AddConsole().SetMinimumLevel(LogLevel.Trace))
+        .AddLogging(loggingOptions => loggingOptions.AddConsole().SetMinimumLevel(LogLevel.Trace).AddFile(@"C:\logs\repro.mt.{Date}.log", minimumLevel: LogLevel.Trace))
         .BuildServiceProvider()
         .GetRequiredService<ILoggerFactory>();
 
@@ -44,13 +44,13 @@ namespace ReproProjectMassTransit
         {
           ep.MaxConcurrentCalls = config.MaxConcurrentCalls;
           ep.LockDuration = TimeSpan.FromMinutes(1);
-          ep.Consumer<Consumer>();
+          ep.Consumer<Consumer>(() => new Consumer(loggerFactory.CreateLogger<Consumer>()));
         });
       });
 
       await busControl.StartAsync();
 
-      var publisher = new Publisher(busControl);
+      var publisher = new Publisher(busControl, loggerFactory.CreateLogger<Publisher>());
 
       var timer = new System.Timers.Timer(config.PublishInterval);
       timer.Elapsed += publisher.Publish;
@@ -81,9 +81,11 @@ namespace ReproProjectMassTransit
 
   public class Consumer : IConsumer<TestMessage>
   {
+    private readonly ILogger<Consumer> _logger;
+    public Consumer(ILogger<Consumer> logger) { _logger = logger; }
     public Task Consume(ConsumeContext<TestMessage> context)
     {
-      Console.WriteLine("Received Message={0}", context.Message.Message);
+      _logger.LogTrace("Received Message={0}", context.Message.Message);
       return Task.CompletedTask;
     }
   }
@@ -91,15 +93,17 @@ namespace ReproProjectMassTransit
   public class Publisher
   {
     private readonly IPublishEndpoint _endpoint;
-    public Publisher(IPublishEndpoint endpoint)
+    private readonly ILogger<Publisher> _logger;
+    public Publisher(IPublishEndpoint endpoint, ILogger<Publisher> logger)
     {
       _endpoint = endpoint;
+      _logger = logger;
     }
 
     public async void Publish(object sender, ElapsedEventArgs elapsed)
     {
       var guid = Guid.NewGuid().ToString();
-      Console.WriteLine("Publishing Message={0}", guid);
+      _logger.LogTrace("Publishing Message={0}", guid);
       await _endpoint.Publish<TestMessage>(new TestMessage
       {
         Message = guid
