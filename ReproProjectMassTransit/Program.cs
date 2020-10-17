@@ -14,10 +14,10 @@ namespace ReproProjectMassTransit
     {
       var config = new MTASBSettings
       {
-        MaxConcurrentCalls = 10,
+        MaxConcurrentCalls = 100,
         Endpoint = "sb://endpoint.servicebus.windows.net",
         KeyName = "RootManageSharedAccessKey",
-        SharedAccessSignature = "set_me",
+        SharedAccessSignature = "setme",
         PublishInterval = 5000
       };
 

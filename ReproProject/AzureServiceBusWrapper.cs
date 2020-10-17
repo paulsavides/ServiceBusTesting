@@ -63,19 +63,28 @@ namespace ReproProject
         }, cancellationToken);
       }
 
-      var connection = new ServiceBusConnection(_config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
+      var queueConnection = new ServiceBusConnection(_config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
       {
         TokenProvider = tokenProvider
       };
 
-      _messageReceiver = new QueueClient(connection, _config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default);
+      _messageReceiver = new QueueClient(queueConnection, _config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
+      {
+        PrefetchCount = _config.MaxConcurrentCalls
+      };
+
       _messageReceiver.RegisterMessageHandler(ReceiveMessageAsync, new MessageHandlerOptions(HandleErrorAsync)
       {
         AutoComplete = false,
         MaxConcurrentCalls = _config.MaxConcurrentCalls
       });
 
-      _messageSender = new TopicClient(connection, _config.TopicName, RetryPolicy.Default);
+      var topicConnection = new ServiceBusConnection(_config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
+      {
+        TokenProvider = tokenProvider
+      };
+
+      _messageSender = new TopicClient(topicConnection, _config.TopicName, RetryPolicy.Default);
       _messageSendTimer = new System.Timers.Timer(_config.PublishInterval);
       _messageSendTimer.Elapsed += SendMessageAsync;
 
