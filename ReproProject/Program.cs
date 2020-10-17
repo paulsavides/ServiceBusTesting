@@ -14,7 +14,8 @@ namespace ReproProject
         MaxConcurrentCalls = 10,
         Endpoint = "sb://endpoint.servicebus.windows.net",
         KeyName = "RootManageSharedAccessKey",
-        SharedAccessSignature = "setme"
+        SharedAccessSignature = "setme",
+        PublishInterval = 1000
       };
 
       var wrapper = await AzureServiceBusWrapper.InitializeAsync(config);

@@ -1,8 +1,12 @@
-﻿using Microsoft.Azure.ServiceBus.Management;
+﻿using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Microsoft.Azure.ServiceBus.Management;
 using Microsoft.Azure.ServiceBus.Primitives;
 using System;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 
 namespace ReproProject
 {
@@ -14,6 +18,7 @@ namespace ReproProject
     public int MaxConcurrentCalls { get; set; }
     public string SharedAccessSignature { get; set; }
     public string KeyName { get; set; }
+    public int PublishInterval { get; set; }
   }
 
   public class AzureServiceBusWrapper
@@ -28,6 +33,9 @@ namespace ReproProject
 
     private AzureServiceBusConfiguration _config;
     private ManagementClient _managementClient;
+    private MessageReceiver _messageReceiver;
+    private MessageSender _messageSender;
+    private System.Timers.Timer _messageSendTimer;
 
     private async Task InitializeInternalAsync(AzureServiceBusConfiguration configuration, CancellationToken cancellationToken)
     {
@@ -55,17 +63,59 @@ namespace ReproProject
         }, cancellationToken);
       }
 
-      //var connection = new ServiceBusConnection(_config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
-      //{
-      //  TokenProvider = tokenProvider
-      //};
+      var connection = new ServiceBusConnection(_config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
+      {
+        TokenProvider = tokenProvider
+      };
+
+      _messageReceiver = new MessageReceiver(connection, _config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default, _config.MaxConcurrentCalls);
+      _messageReceiver.RegisterMessageHandler(ReceiveMessageAsync, new MessageHandlerOptions(HandleErrorAsync)
+      {
+        AutoComplete = false,
+        MaxConcurrentCalls = _config.MaxConcurrentCalls
+      });
+
+      _messageSender = new MessageSender(connection, _config.TopicName, RetryPolicy.Default);
+      _messageSendTimer = new System.Timers.Timer(_config.PublishInterval);
+      _messageSendTimer.Elapsed += SendMessageAsync;
+
+      _messageSendTimer.Start();
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
       cancellationToken.ThrowIfCancellationRequested();
-
+      _messageSendTimer.Stop();
       await _managementClient.CloseAsync();
+      await _messageReceiver.CloseAsync();
+      await _messageSender.CloseAsync();
+    }
+
+    public async Task ReceiveMessageAsync(Message message, CancellationToken cancellationToken)
+    {
+      cancellationToken.ThrowIfCancellationRequested();
+      Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
+      await _messageReceiver.CompleteAsync(message.SystemProperties.LockToken);
+    }
+
+    public async void SendMessageAsync(object sender, ElapsedEventArgs args)
+    {
+      var messageId = Guid.NewGuid().ToString();
+      Console.WriteLine("Sending MessageId=[{0}]", messageId);
+      await _messageSender.SendAsync(new Message
+      {
+        MessageId = messageId,
+        Body = Encoding.UTF8.GetBytes("hello!")
+      });
+    }
+
+    public Task HandleErrorAsync(ExceptionReceivedEventArgs args)
+    {
+      var ctx = args.ExceptionReceivedContext;
+      var ex = args.Exception;
+
+      Console.WriteLine("Action=[{0}] ClientId=[{1}] Endpoint=[{2}] EntityPath=[{3}] Exception=[{4}]", ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
+      return Task.CompletedTask;
     }
   }
 }
