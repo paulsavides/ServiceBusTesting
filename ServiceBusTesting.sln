@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30406.217
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReproProject", "ReproProject\ReproProject.csproj", "{1701E267-ECEA-4569-9095-7AA0CC627DE3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReproProjectMassTransit", "ReproProjectMassTransit\ReproProjectMassTransit.csproj", "{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{1701E267-ECEA-4569-9095-7AA0CC627DE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1701E267-ECEA-4569-9095-7AA0CC627DE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1701E267-ECEA-4569-9095-7AA0CC627DE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
