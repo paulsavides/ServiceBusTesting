@@ -15,7 +15,7 @@ namespace ReproProject
         Endpoint = "sb://endpoint.servicebus.windows.net",
         KeyName = "RootManageSharedAccessKey",
         SharedAccessSignature = "setme",
-        PublishInterval = 1000
+        PublishInterval = 5000
       };
 
       var wrapper = await AzureServiceBusWrapper.InitializeAsync(config);

@@ -33,8 +33,8 @@ namespace ReproProject
 
     private AzureServiceBusConfiguration _config;
     private ManagementClient _managementClient;
-    private MessageReceiver _messageReceiver;
-    private MessageSender _messageSender;
+    private IReceiverClient _messageReceiver;
+    private ISenderClient _messageSender;
     private System.Timers.Timer _messageSendTimer;
 
     private async Task InitializeInternalAsync(AzureServiceBusConfiguration configuration, CancellationToken cancellationToken)
@@ -68,14 +68,14 @@ namespace ReproProject
         TokenProvider = tokenProvider
       };
 
-      _messageReceiver = new MessageReceiver(connection, _config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default, _config.MaxConcurrentCalls);
+      _messageReceiver = new QueueClient(connection, _config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default);
       _messageReceiver.RegisterMessageHandler(ReceiveMessageAsync, new MessageHandlerOptions(HandleErrorAsync)
       {
         AutoComplete = false,
         MaxConcurrentCalls = _config.MaxConcurrentCalls
       });
 
-      _messageSender = new MessageSender(connection, _config.TopicName, RetryPolicy.Default);
+      _messageSender = new TopicClient(connection, _config.TopicName, RetryPolicy.Default);
       _messageSendTimer = new System.Timers.Timer(_config.PublishInterval);
       _messageSendTimer.Elapsed += SendMessageAsync;
 
@@ -93,9 +93,23 @@ namespace ReproProject
 
     public async Task ReceiveMessageAsync(Message message, CancellationToken cancellationToken)
     {
-      cancellationToken.ThrowIfCancellationRequested();
-      Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
-      await _messageReceiver.CompleteAsync(message.SystemProperties.LockToken);
+      Exception receiveEx = null;
+      try
+      {
+        cancellationToken.ThrowIfCancellationRequested();
+        Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
+        await _messageReceiver.CompleteAsync(message.SystemProperties.LockToken);
+      }
+      catch (Exception ex)
+      {
+        receiveEx = ex;
+        Console.WriteLine("Exception ocurred during ReceiveMessageAsync() Message=[{0}]", ex.Message);
+      }
+
+      if (receiveEx != null)
+      {
+        await _messageReceiver.AbandonAsync(message.SystemProperties.LockToken);
+      }
     }
 
     public async void SendMessageAsync(object sender, ElapsedEventArgs args)
