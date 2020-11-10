@@ -16,8 +16,7 @@ namespace ReproConsistent
         Endpoint = "sb://mybus.servicebus.windows.net",
         KeyName = "RootManageSharedAccessKey",
         SharedAccessSignature = "replaceme",
-        PublishInterval = 100,
-        RecycleInterval = 2000,
+        PublishInterval = 1000,
         TransientErrorInterval = 1000
       };
 

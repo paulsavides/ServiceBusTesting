@@ -10,6 +10,5 @@
     public string KeyName { get; set; }
     public int TransientErrorInterval { get; set; }
     public int PublishInterval { get; set; }
-    public int RecycleInterval { get; set; }
   }
 }
