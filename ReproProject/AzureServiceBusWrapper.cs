@@ -129,7 +129,16 @@ namespace ReproProject
       var ex = args.Exception;
 
       Console.WriteLine("Action=[{0}] ClientId=[{1}] Endpoint=[{2}] EntityPath=[{3}] Exception=[{4}]", ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
+      Task.Run(() => RecyleReceiverAsync());
       return Task.CompletedTask;
+    }
+
+    private async Task RecyleReceiverAsync()
+    {
+      Console.WriteLine("Recycling the Receiver");
+
+      await _messageReceiver.CloseAsync();
+      _messageReceiver = AzureServiceBusReceiver.Create(_config, ReceiveMessageAsync, HandleErrorAsync);
     }
   }
 }
