@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ReproConsistent
@@ -18,10 +19,18 @@ namespace ReproConsistent
         PublishInterval = 5000
       };
 
-      await AzureServiceBusInitializer.InitializeQueuesAndStuff(config);
+      await AzureServiceBusUtilities.InitializeQueuesAndStuff(config);
+      var tokenSource = new CancellationTokenSource();
+      var running = AzureServiceBusLinkTest.RunTestAsync(tokenSource.Token, config);
 
       Console.WriteLine("Press any key to shut down and exit...");
       Console.ReadKey();
+
+      Console.WriteLine("Shutting down...");
+      tokenSource.Cancel();
+      await running;
+
+      Console.WriteLine("Shut down!");
     }
   }
 }
