@@ -8,6 +8,10 @@ namespace ReproConsistent
   {
     public static async Task RunTestAsync(CancellationToken token, AzureServiceBusConfiguration config)
     {
+      var managementClient = new AzureServiceBusManagementClientWrapper(config);
+      await managementClient.IntializeEntities();
+      managementClient.StartSimulatingTransientErrors();
+
       var publisher = new AzureServiceBusMessagePublisher(config);
 
       while (!token.IsCancellationRequested)
@@ -24,6 +28,7 @@ namespace ReproConsistent
       }
 
       await publisher.Shutdown();
+      await managementClient.Shutdown();
     }
   }
 }

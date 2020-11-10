@@ -17,10 +17,10 @@ namespace ReproConsistent
         KeyName = "RootManageSharedAccessKey",
         SharedAccessSignature = "replaceme",
         PublishInterval = 100,
-        RecycleInterval = 2000
+        RecycleInterval = 2000,
+        TransientErrorInterval = 1000
       };
 
-      await AzureServiceBusUtilities.InitializeQueuesAndStuff(config);
       var tokenSource = new CancellationTokenSource();
       var running = AzureServiceBusLinkTest.RunTestAsync(tokenSource.Token, config);
 
