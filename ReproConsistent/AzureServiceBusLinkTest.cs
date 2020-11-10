@@ -16,11 +16,11 @@ namespace ReproConsistent
 
       while (!token.IsCancellationRequested)
       {
-        var receiver = AzureServiceBusUtilities.CreateMessageReceiver(config);
-        await Task.Delay(config.RecycleInterval);
-        await receiver.CloseAsync();
+        var receiver = new AzureServiceBusMessageReceiver(config);
+        await receiver.WaitForError(token);
+        await receiver.Shutdown();
 
-        var link = AzureServiceBusUtilities.GetLinkFromReceiver(receiver);
+        var link = receiver.GetLink();
         if (link.TryGetOpenedObject(out var _))
         {
           Console.WriteLine($"Received open link from receiver with clientId={receiver.ClientId}");

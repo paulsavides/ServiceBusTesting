@@ -5,15 +5,22 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Amqp;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
-using Microsoft.Azure.ServiceBus.Management;
 using Microsoft.Azure.ServiceBus.Primitives;
 
 namespace ReproConsistent
 {
-  public static class AzureServiceBusUtilities
+  public class AzureServiceBusMessageReceiver
   {
-    public static MessageReceiver CreateMessageReceiver(AzureServiceBusConfiguration config)
+    private readonly AzureServiceBusConfiguration _config;
+    private readonly MessageReceiver _receiver;
+
+    private bool _foundError = false;
+
+    public string ClientId => _receiver.ClientId;
+
+    public AzureServiceBusMessageReceiver(AzureServiceBusConfiguration config)
     {
+      _config = config;
       var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(config.KeyName, config.SharedAccessSignature, TimeSpan.FromDays(1));
 
       var queueConnection = new ServiceBusConnection(config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
@@ -21,27 +28,25 @@ namespace ReproConsistent
         TokenProvider = tokenProvider
       };
 
-      var receiver = new MessageReceiver(queueConnection, config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
+      _receiver = new MessageReceiver(queueConnection, config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
       {
         PrefetchCount = config.MaxConcurrentCalls
       };
 
-      receiver.RegisterMessageHandler((message, token) => ReceiveMessageAsync(receiver, message, token), new MessageHandlerOptions(HandleErrorAsync)
+      _receiver.RegisterMessageHandler((message, token) => ReceiveMessageAsync(_receiver, message, token), new MessageHandlerOptions(HandleErrorAsync)
       {
         AutoComplete = false,
         MaxConcurrentCalls = config.MaxConcurrentCalls
       });
-
-      return receiver;
     }
 
-    public static async Task ReceiveMessageAsync(IMessageReceiver receiver, Message message, CancellationToken cancellationToken)
+    public async Task ReceiveMessageAsync(IMessageReceiver receiver, Message message, CancellationToken cancellationToken)
     {
       Exception receiveEx = null;
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
-        Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
+        Console.WriteLine("Received MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
         await receiver.CompleteAsync(message.SystemProperties.LockToken);
       }
       catch (Exception ex)
@@ -56,20 +61,34 @@ namespace ReproConsistent
       }
     }
 
-    public static Task HandleErrorAsync(ExceptionReceivedEventArgs args)
+    public Task HandleErrorAsync(ExceptionReceivedEventArgs args)
     {
       var ctx = args.ExceptionReceivedContext;
       var ex = args.Exception;
 
       Console.WriteLine("Action=[{0}] ClientId=[{1}] Endpoint=[{2}] EntityPath=[{3}] Exception=[{4}]", ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
+      _foundError = true;
       return Task.CompletedTask;
     }
 
-    public static FaultTolerantAmqpObject<ReceivingAmqpLink> GetLinkFromReceiver(MessageReceiver receiver)
+    public FaultTolerantAmqpObject<ReceivingAmqpLink> GetLink()
     {
-      var property = receiver.GetType().GetProperty("ReceiveLinkManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-      object linkObj = property.GetValue(receiver);
+      var property = _receiver.GetType().GetProperty("ReceiveLinkManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+      object linkObj = property.GetValue(_receiver);
       return linkObj as FaultTolerantAmqpObject<ReceivingAmqpLink>;
+    }
+
+    public async Task WaitForError(CancellationToken token)
+    {
+      while (!token.IsCancellationRequested && !_foundError)
+      {
+        await Task.Delay(10);
+      }
+    }
+
+    public Task Shutdown()
+    {
+      return _receiver.CloseAsync();
     }
   }
 }
