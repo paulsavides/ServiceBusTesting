@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Primitives;
@@ -10,11 +10,14 @@ namespace ReproConsistent
 {
   public class AzureServiceBusMessagePublisher
   {
+    private readonly AzureServiceBusConfiguration _config;
     private readonly IMessageSender _sender;
-    private readonly Timer _timer;
+    private readonly CancellationTokenSource _sendCts = new CancellationTokenSource();
+    private readonly Task _sendTask;
 
     public AzureServiceBusMessagePublisher(AzureServiceBusConfiguration config)
     {
+      _config = config;
       var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(config.KeyName, config.SharedAccessSignature, TimeSpan.FromDays(1));
 
       var topicConnection = new ServiceBusConnection(config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
@@ -23,27 +26,37 @@ namespace ReproConsistent
       };
 
       _sender = new MessageSender(topicConnection, config.TopicName);
-      _timer = new Timer(config.PublishInterval);
-      _timer.Elapsed += SendMessageAsync;
-
-      _timer.Start();
+      _sendTask = SendMessageAsync(_sendCts.Token);
     }
 
-    private async void SendMessageAsync(object sender, ElapsedEventArgs args)
+    private async Task SendMessageAsync(CancellationToken token)
     {
-      var messageId = Guid.NewGuid().ToString();
-      Console.WriteLine("Sending MessageId=[{0}]", messageId);
-      await _sender.SendAsync(new Message
+      while (!token.IsCancellationRequested)
       {
-        MessageId = messageId,
-        Body = Encoding.UTF8.GetBytes("hello!")
-      });
+        try
+        {
+          var messageId = Guid.NewGuid().ToString();
+          Console.WriteLine("Sending MessageId=[{0}]", messageId);
+          await _sender.SendAsync(new Message
+          {
+            MessageId = messageId,
+            Body = Encoding.UTF8.GetBytes("hello!")
+          });
+
+          await Task.Delay(_config.PublishInterval);
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine("Encountered an error publishing message, error=" + ex.Message);
+        }
+      }
     }
 
-    public Task Shutdown()
+    public async Task Shutdown()
     {
-      _timer.Stop();
-      return _sender.CloseAsync();
+      _sendCts.Cancel();
+      await _sendTask;
+      await _sender.CloseAsync();
     }
   }
 }

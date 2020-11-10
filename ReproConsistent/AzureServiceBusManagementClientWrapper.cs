@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using Microsoft.Azure.ServiceBus.Management;
 using Microsoft.Azure.ServiceBus.Primitives;
 
@@ -10,8 +10,8 @@ namespace ReproConsistent
   {
     private readonly AzureServiceBusConfiguration _config;
     private readonly ManagementClient _client;
-
-    private Timer _timer;
+    private CancellationTokenSource _errorCts = new CancellationTokenSource();
+    private Task _errorTask;
 
     public AzureServiceBusManagementClientWrapper(AzureServiceBusConfiguration config)
     {
@@ -44,32 +44,35 @@ namespace ReproConsistent
 
     public void StartSimulatingTransientErrors()
     {
-      _timer = new Timer(_config.TransientErrorInterval);
-      _timer.Elapsed += UpdateQueueAsync;
-
-      _timer.Start();
+      _errorTask = UpdateQueueAsync(_errorCts.Token);
     }
 
-    private Random _rand = new Random();
-    private async void UpdateQueueAsync(object sender, ElapsedEventArgs args)
+    private readonly Random _rand = new Random();
+    private async Task UpdateQueueAsync(CancellationToken token)
     {
-      try
+      while (!token.IsCancellationRequested)
       {
-        var queue = await _client.GetQueueAsync(_config.QueueName);
-        queue.DefaultMessageTimeToLive = TimeSpan.FromMinutes(_rand.Next(0, 1000));
+        try
+        {
+          var queue = await _client.GetQueueAsync(_config.QueueName);
+          queue.DefaultMessageTimeToLive = TimeSpan.FromMinutes(_rand.Next(0, 1000));
 
-        await _client.UpdateQueueAsync(queue);
-      }
-      catch(Exception ex)
-      {
-        Console.WriteLine("Unable to update queue message=" + ex.Message);
+          await _client.UpdateQueueAsync(queue);
+
+          await Task.Delay(_config.TransientErrorInterval);
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine("Unable to update queue, error=" + ex.Message);
+        }
       }
     }
 
-    public Task Shutdown()
+    public async Task Shutdown()
     {
-      _timer?.Stop();
-      return _client.CloseAsync();
+      _errorCts.Cancel();
+      await _errorTask;
+      await _client.CloseAsync();
     }
   }
 }
