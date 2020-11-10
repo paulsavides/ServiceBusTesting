@@ -8,9 +8,12 @@ namespace ReproConsistent
   {
     public static async Task RunTestAsync(CancellationToken token, AzureServiceBusConfiguration config)
     {
+      var publisher = new AzureServiceBusMessagePublisher(config);
+
       while (!token.IsCancellationRequested)
       {
         var receiver = AzureServiceBusUtilities.CreateMessageReceiver(config);
+        await Task.Delay(config.RecycleInterval);
         await receiver.CloseAsync();
 
         var link = AzureServiceBusUtilities.GetLinkFromReceiver(receiver);
@@ -19,6 +22,8 @@ namespace ReproConsistent
           Console.WriteLine($"Received open link from receiver with clientId={receiver.ClientId}");
         }
       }
+
+      await publisher.Shutdown();
     }
   }
 }

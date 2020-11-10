@@ -16,7 +16,8 @@ namespace ReproConsistent
         Endpoint = "sb://mybus.servicebus.windows.net",
         KeyName = "RootManageSharedAccessKey",
         SharedAccessSignature = "replaceme",
-        PublishInterval = 5000
+        PublishInterval = 100,
+        RecycleInterval = 2000
       };
 
       await AzureServiceBusUtilities.InitializeQueuesAndStuff(config);
@@ -27,6 +28,7 @@ namespace ReproConsistent
       Console.ReadKey();
 
       Console.WriteLine("Shutting down...");
+      
       tokenSource.Cancel();
       await running;
 

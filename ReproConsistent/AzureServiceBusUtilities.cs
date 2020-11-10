@@ -52,7 +52,7 @@ namespace ReproConsistent
         PrefetchCount = config.MaxConcurrentCalls
       };
 
-      receiver.RegisterMessageHandler((message, token) => Task.CompletedTask, new MessageHandlerOptions(args => Task.CompletedTask)
+      receiver.RegisterMessageHandler((message, token) => ReceiveMessageAsync(receiver, message, token), new MessageHandlerOptions(HandleErrorAsync)
       {
         AutoComplete = false,
         MaxConcurrentCalls = config.MaxConcurrentCalls
@@ -61,9 +61,39 @@ namespace ReproConsistent
       return receiver;
     }
 
+    public static async Task ReceiveMessageAsync(IMessageReceiver receiver, Message message, CancellationToken cancellationToken)
+    {
+      Exception receiveEx = null;
+      try
+      {
+        cancellationToken.ThrowIfCancellationRequested();
+        Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
+        await receiver.CompleteAsync(message.SystemProperties.LockToken);
+      }
+      catch (Exception ex)
+      {
+        receiveEx = ex;
+        Console.WriteLine("Exception ocurred during ReceiveMessageAsync() Message=[{0}]", ex.Message);
+      }
+
+      if (receiveEx != null)
+      {
+        await receiver.AbandonAsync(message.SystemProperties.LockToken);
+      }
+    }
+
+    public static Task HandleErrorAsync(ExceptionReceivedEventArgs args)
+    {
+      var ctx = args.ExceptionReceivedContext;
+      var ex = args.Exception;
+
+      Console.WriteLine("Action=[{0}] ClientId=[{1}] Endpoint=[{2}] EntityPath=[{3}] Exception=[{4}]", ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
+      return Task.CompletedTask;
+    }
+
     public static FaultTolerantAmqpObject<ReceivingAmqpLink> GetLinkFromReceiver(MessageReceiver receiver)
     {
-      var property = receiver.GetType().GetProperty("ReceiveLinkManager", System.Reflection.BindingFlags.NonPublic);
+      var property = receiver.GetType().GetProperty("ReceiveLinkManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
       object linkObj = property.GetValue(receiver);
       return linkObj as FaultTolerantAmqpObject<ReceivingAmqpLink>;
     }

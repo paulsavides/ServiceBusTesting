@@ -9,5 +9,6 @@
     public string SharedAccessSignature { get; set; }
     public string KeyName { get; set; }
     public int PublishInterval { get; set; }
+    public int RecycleInterval { get; set; }
   }
 }
