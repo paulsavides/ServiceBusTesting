@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30406.217
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReproProject", "ReproProject\ReproProject.csproj", "{1701E267-ECEA-4569-9095-7AA0CC627DE3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReproProject", "ReproProject\ReproProject.csproj", "{1701E267-ECEA-4569-9095-7AA0CC627DE3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReproProjectMassTransit", "ReproProjectMassTransit\ReproProjectMassTransit.csproj", "{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReproProjectMassTransit", "ReproProjectMassTransit\ReproProjectMassTransit.csproj", "{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReproConsistent", "ReproConsistent\ReproConsistent.csproj", "{49C14FBE-AED4-400F-B523-051609B247CA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5EC99E20-8851-4B9A-81B5-9857A16BDF2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49C14FBE-AED4-400F-B523-051609B247CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49C14FBE-AED4-400F-B523-051609B247CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49C14FBE-AED4-400F-B523-051609B247CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49C14FBE-AED4-400F-B523-051609B247CA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
