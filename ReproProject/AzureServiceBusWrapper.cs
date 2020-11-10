@@ -33,7 +33,7 @@ namespace ReproProject
 
     private AzureServiceBusConfiguration _config;
     private ManagementClient _managementClient;
-    private IReceiverClient _messageReceiver;
+    private AzureServiceBusReceiver _messageReceiver;
     private ISenderClient _messageSender;
     private System.Timers.Timer _messageSendTimer;
 
@@ -68,16 +68,7 @@ namespace ReproProject
         TokenProvider = tokenProvider
       };
 
-      _messageReceiver = new QueueClient(queueConnection, _config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
-      {
-        PrefetchCount = _config.MaxConcurrentCalls
-      };
-
-      _messageReceiver.RegisterMessageHandler(ReceiveMessageAsync, new MessageHandlerOptions(HandleErrorAsync)
-      {
-        AutoComplete = false,
-        MaxConcurrentCalls = _config.MaxConcurrentCalls
-      });
+      _messageReceiver = AzureServiceBusReceiver.Create(_config, ReceiveMessageAsync, HandleErrorAsync);
 
       var topicConnection = new ServiceBusConnection(_config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
       {
@@ -100,14 +91,14 @@ namespace ReproProject
       await _messageSender.CloseAsync();
     }
 
-    public async Task ReceiveMessageAsync(Message message, CancellationToken cancellationToken)
+    public async Task ReceiveMessageAsync(IMessageReceiver receiver, Message message, CancellationToken cancellationToken)
     {
       Exception receiveEx = null;
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
         Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
-        await _messageReceiver.CompleteAsync(message.SystemProperties.LockToken);
+        await receiver.CompleteAsync(message.SystemProperties.LockToken);
       }
       catch (Exception ex)
       {
@@ -117,7 +108,7 @@ namespace ReproProject
 
       if (receiveEx != null)
       {
-        await _messageReceiver.AbandonAsync(message.SystemProperties.LockToken);
+        await receiver.AbandonAsync(message.SystemProperties.LockToken);
       }
     }
 
