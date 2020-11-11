@@ -1,12 +1,13 @@
-﻿using Microsoft.Azure.ServiceBus;
-using Microsoft.Azure.ServiceBus.Core;
-using Microsoft.Azure.ServiceBus.Management;
-using Microsoft.Azure.ServiceBus.Primitives;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using Microsoft.Azure.ServiceBus;
+using Microsoft.Azure.ServiceBus.Core;
+using Microsoft.Azure.ServiceBus.Management;
+using Microsoft.Azure.ServiceBus.Primitives;
 
 namespace ReproProject
 {
@@ -36,6 +37,9 @@ namespace ReproProject
     private AzureServiceBusReceiver _messageReceiver;
     private ISenderClient _messageSender;
     private System.Timers.Timer _messageSendTimer;
+
+    private readonly SemaphoreSlim _recycleLock = new SemaphoreSlim(1);
+    private readonly List<AzureServiceBusReceiver> _closedReceivers = new List<AzureServiceBusReceiver>();
 
     private async Task InitializeInternalAsync(AzureServiceBusConfiguration configuration, CancellationToken cancellationToken)
     {
@@ -135,10 +139,20 @@ namespace ReproProject
 
     private async Task RecyleReceiverAsync()
     {
-      Console.WriteLine("Recycling the Receiver");
+      try
+      {
+        await _recycleLock.WaitAsync();
+        Console.WriteLine("Recycling the Receiver");
 
-      await _messageReceiver.CloseAsync();
-      _messageReceiver = AzureServiceBusReceiver.Create(_config, ReceiveMessageAsync, HandleErrorAsync);
+        await _messageReceiver.CloseAsync();
+        _closedReceivers.Add(_messageReceiver);
+        _messageReceiver = AzureServiceBusReceiver.Create(_config, ReceiveMessageAsync, HandleErrorAsync);
+
+      }
+      finally
+      {
+        _recycleLock.Release();
+      }
     }
   }
 }
