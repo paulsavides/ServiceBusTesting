@@ -13,11 +13,14 @@ namespace ReproConsistent
       managementClient.StartSimulatingTransientErrors();
 
       var publisher = new AzureServiceBusMessagePublisher(config);
+      
+      Console.WriteLine("Starting test...");
 
       while (!token.IsCancellationRequested)
       {
         var receiver = new AzureServiceBusMessageReceiver(config);
         await receiver.WaitForError(token);
+        Console.WriteLine("Receiver found error, recycling");
         await receiver.Shutdown();
 
         var link = receiver.GetLink();

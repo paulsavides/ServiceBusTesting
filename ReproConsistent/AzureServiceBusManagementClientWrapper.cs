@@ -56,8 +56,8 @@ namespace ReproConsistent
         {
           var queue = await _client.GetQueueAsync(_config.QueueName);
 
-          queue.DefaultMessageTimeToLive = TimeSpan.FromMinutes(_rand.Next(0, 1000));
-          queue.AutoDeleteOnIdle = TimeSpan.FromMinutes(_rand.Next(0, 1000));
+          queue.DefaultMessageTimeToLive = TimeSpan.FromMinutes(_rand.Next(5, 1000));
+          queue.AutoDeleteOnIdle = TimeSpan.FromMinutes(_rand.Next(5, 1000));
 
           await _client.UpdateQueueAsync(queue);
 
