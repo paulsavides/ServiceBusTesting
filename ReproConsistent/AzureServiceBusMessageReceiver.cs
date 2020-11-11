@@ -33,21 +33,21 @@ namespace ReproConsistent
         PrefetchCount = config.MaxConcurrentCalls
       };
 
-      _receiver.RegisterMessageHandler((message, token) => ReceiveMessageAsync(_receiver, message, token), new MessageHandlerOptions(HandleErrorAsync)
+      _receiver.RegisterMessageHandler(ReceiveMessageAsync, new MessageHandlerOptions(HandleErrorAsync)
       {
         AutoComplete = false,
         MaxConcurrentCalls = config.MaxConcurrentCalls
       });
     }
 
-    public async Task ReceiveMessageAsync(IMessageReceiver receiver, Message message, CancellationToken cancellationToken)
+    public async Task ReceiveMessageAsync(Message message, CancellationToken cancellationToken)
     {
       Exception receiveEx = null;
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
         Console.WriteLine("Received MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
-        await receiver.CompleteAsync(message.SystemProperties.LockToken);
+        await _receiver.CompleteAsync(message.SystemProperties.LockToken);
       }
       catch (Exception ex)
       {
@@ -57,7 +57,7 @@ namespace ReproConsistent
 
       if (receiveEx != null)
       {
-        await receiver.AbandonAsync(message.SystemProperties.LockToken);
+        await _receiver.AbandonAsync(message.SystemProperties.LockToken);
       }
     }
 
