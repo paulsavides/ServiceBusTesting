@@ -10,7 +10,7 @@ namespace ReproConsistent
     {
       var managementClient = new AzureServiceBusManagementClientWrapper(config);
       await managementClient.IntializeEntities();
-      managementClient.StartSimulatingTransientErrors();
+      //managementClient.StartSimulatingTransientErrors();
 
       var publisher = new AzureServiceBusMessagePublisher(config);
       
@@ -19,12 +19,24 @@ namespace ReproConsistent
       while (!token.IsCancellationRequested)
       {
         var receiver = new AzureServiceBusMessageReceiver(config);
-        await receiver.WaitForError(token);
-        Console.WriteLine("Receiver found error, recycling");
+        await Task.Delay(1000);
+
+        var connectionManager = receiver.GetAmqpConnectionManager();
+        if (!connectionManager.TryGetOpenedObject(out var connection))
+        {
+          throw new TimeoutException("whatever");
+        }
+
+        await connection.CloseAsync(TimeSpan.FromSeconds(1));
+
+        var littleTimeout = new CancellationTokenSource(10000);
+        await receiver.WaitForError(token, littleTimeout.Token);
+
+        Console.WriteLine("Receiver found error or timed out looking for error, recycling");
         await receiver.Shutdown();
 
-        var link = receiver.GetLink();
-        if (link.TryGetOpenedObject(out var _))
+        var linkManager = receiver.GetLinkManager();
+        if (linkManager.TryGetOpenedObject(out var _))
         {
           Console.WriteLine($"Received open link from receiver with clientId={receiver.ClientId}");
         }

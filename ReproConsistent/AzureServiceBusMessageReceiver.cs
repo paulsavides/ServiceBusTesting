@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace ReproConsistent
   public class AzureServiceBusMessageReceiver
   {
     private readonly MessageReceiver _receiver;
-
+    private readonly ServiceBusConnection _connection;
     private bool _foundError = false;
 
     public string ClientId => _receiver.ClientId;
@@ -21,12 +22,12 @@ namespace ReproConsistent
     {
       var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(config.KeyName, config.SharedAccessSignature, TimeSpan.FromDays(1));
 
-      var queueConnection = new ServiceBusConnection(config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
+      _connection = new ServiceBusConnection(config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
       {
         TokenProvider = tokenProvider
       };
 
-      _receiver = new MessageReceiver(queueConnection, config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
+      _receiver = new MessageReceiver(_connection, config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
       {
         PrefetchCount = config.MaxConcurrentCalls
       };
@@ -65,24 +66,30 @@ namespace ReproConsistent
       var ex = args.Exception;
 
       bool shouldShutdown = !((ex is ServiceBusException sbException && sbException.IsTransient) || ex is MessageLockLostException);
-      
-      Console.WriteLine("ShoulShutdown=[{0}] Action=[{1}] ClientId=[{2}] Endpoint=[{3}] EntityPath=[{4}] Exception=[{5}]", shouldShutdown,
+
+      Console.WriteLine("ShouldShutdown=[{0}] Action=[{1}] ClientId=[{2}] Endpoint=[{3}] EntityPath=[{4}] Exception=[{5}]", shouldShutdown,
         ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
 
-      _foundError = true;
+      _foundError = shouldShutdown;
       return Task.CompletedTask;
     }
 
-    public FaultTolerantAmqpObject<ReceivingAmqpLink> GetLink()
+    public FaultTolerantAmqpObject<ReceivingAmqpLink> GetLinkManager()
+      => GetInternalProperty<MessageReceiver, FaultTolerantAmqpObject<ReceivingAmqpLink>>(_receiver, "ReceiveLinkManager");
+
+    public FaultTolerantAmqpObject<AmqpConnection> GetAmqpConnectionManager()
+      => GetInternalProperty<ServiceBusConnection, FaultTolerantAmqpObject<AmqpConnection>>(_connection, "ConnectionManager");
+
+    private static TProp GetInternalProperty<TFrom, TProp>(TFrom from, string propertyName)
+      where TProp : class
     {
-      var property = _receiver.GetType().GetProperty("ReceiveLinkManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-      object linkObj = property.GetValue(_receiver);
-      return linkObj as FaultTolerantAmqpObject<ReceivingAmqpLink>;
+      var property = from.GetType().GetProperty(propertyName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+      return property.GetValue(from) as TProp;
     }
 
-    public async Task WaitForError(CancellationToken token)
+    public async Task WaitForError(params CancellationToken[] tokens)
     {
-      while (!token.IsCancellationRequested && !_foundError)
+      while (!tokens.Any(t => t.IsCancellationRequested) && !_foundError)
       {
         await Task.Delay(10);
       }
