@@ -10,7 +10,7 @@ namespace ReproConsistent
   {
     private readonly AzureServiceBusConfiguration _config;
     private readonly ManagementClient _client;
-    private CancellationTokenSource _errorCts = new CancellationTokenSource();
+    private readonly CancellationTokenSource _errorCts = new CancellationTokenSource();
     private Task _errorTask;
 
     public AzureServiceBusManagementClientWrapper(AzureServiceBusConfiguration config)
@@ -72,8 +72,14 @@ namespace ReproConsistent
 
     public async Task Shutdown()
     {
+
       _errorCts.Cancel();
-      await _errorTask;
+
+      if (_errorTask != null)
+      {
+        await _errorTask;
+      }
+
       await _client.CloseAsync();
     }
   }

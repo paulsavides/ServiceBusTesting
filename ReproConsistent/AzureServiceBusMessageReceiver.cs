@@ -11,7 +11,6 @@ namespace ReproConsistent
 {
   public class AzureServiceBusMessageReceiver
   {
-    private readonly AzureServiceBusConfiguration _config;
     private readonly MessageReceiver _receiver;
 
     private bool _foundError = false;
@@ -20,7 +19,6 @@ namespace ReproConsistent
 
     public AzureServiceBusMessageReceiver(AzureServiceBusConfiguration config)
     {
-      _config = config;
       var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(config.KeyName, config.SharedAccessSignature, TimeSpan.FromDays(1));
 
       var queueConnection = new ServiceBusConnection(config.Endpoint, TransportType.Amqp, RetryPolicy.Default)
@@ -66,7 +64,11 @@ namespace ReproConsistent
       var ctx = args.ExceptionReceivedContext;
       var ex = args.Exception;
 
-      Console.WriteLine("Action=[{0}] ClientId=[{1}] Endpoint=[{2}] EntityPath=[{3}] Exception=[{4}]", ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
+      bool shouldShutdown = !((ex is ServiceBusException sbException && sbException.IsTransient) || ex is MessageLockLostException);
+      
+      Console.WriteLine("ShoulShutdown=[{0}] Action=[{1}] ClientId=[{2}] Endpoint=[{3}] EntityPath=[{4}] Exception=[{5}]", shouldShutdown,
+        ctx.Action, ctx.ClientId, ctx.Endpoint, ctx.EntityPath, ex.Message);
+
       _foundError = true;
       return Task.CompletedTask;
     }
