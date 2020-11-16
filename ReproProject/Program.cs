@@ -11,7 +11,7 @@ namespace ReproProject
       {
         QueueName = "repro.project.queue",
         TopicName = "repro.project.topic",
-        MaxConcurrentCalls = 100,
+        MaxConcurrentCalls = 10,
         Endpoint = "sb://endpoint.servicebus.windows.net",
         KeyName = "RootManageSharedAccessKey",
         SharedAccessSignature = "setme",
