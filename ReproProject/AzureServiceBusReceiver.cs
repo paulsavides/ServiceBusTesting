@@ -26,10 +26,21 @@ namespace ReproProject
         TokenProvider = tokenProvider
       };
 
-      var receiver = new MessageReceiver(queueConnection, config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
+      MessageReceiver receiver = null;
+      if (config.AllowReceiverToOwnConnection)
       {
-        PrefetchCount = config.MaxConcurrentCalls
-      };
+        receiver = new MessageReceiver(config.Endpoint, config.QueueName, tokenProvider, receiveMode: ReceiveMode.PeekLock, retryPolicy: RetryPolicy.Default)
+        {
+          PrefetchCount = config.MaxConcurrentCalls
+        };
+      }
+      else
+      {
+        receiver = new MessageReceiver(queueConnection, config.QueueName, ReceiveMode.PeekLock, RetryPolicy.Default)
+        {
+          PrefetchCount = config.MaxConcurrentCalls
+        };
+      }
 
       receiver.RegisterMessageHandler((message, token) => receiveFunc(receiver, message, token), new MessageHandlerOptions(errorFunc)
       {

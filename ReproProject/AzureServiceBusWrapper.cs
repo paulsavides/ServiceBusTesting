@@ -22,6 +22,7 @@ namespace ReproProject
     public string SharedAccessSignature { get; set; }
     public string KeyName { get; set; }
     public int PublishInterval { get; set; }
+    public bool AllowReceiverToOwnConnection { get; set; }
   }
 
   public class AzureServiceBusWrapper
@@ -171,12 +172,7 @@ namespace ReproProject
 
       Console.WriteLine("LinksThatShouldBeClosed=" + linksThatShouldBeClosed.Count);
       var unsettledMessages = linksThatShouldBeClosed.Select(l => l.GetInternalProperty<ReceivingAmqpLink, Dictionary<ArraySegment<byte>, Delivery>>("UnsettledMap"));
-
       Console.WriteLine("UnsettledMessageCount=" + unsettledMessages.Select(um => um.Count).Sum());
-      //foreach(var message in unsettledMessages.SelectMany(um => um.Values))
-      //{
-      //  Console.Wiretmessage.DeliveryId
-      //}
     }
   }
 }
