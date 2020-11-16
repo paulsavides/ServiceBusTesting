@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using Microsoft.Azure.Amqp;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Management;
@@ -147,12 +149,34 @@ namespace ReproProject
         await _messageReceiver.CloseAsync();
         _closedReceivers.Add(_messageReceiver);
         _messageReceiver = AzureServiceBusReceiver.Create(_config, ReceiveMessageAsync, HandleErrorAsync);
-
       }
       finally
       {
         _recycleLock.Release();
       }
+    }
+
+    public async Task PrintRecycledReceiversDiagnosticsAsync()
+    {
+      List<ReceivingAmqpLink> linksThatShouldBeClosed = new List<ReceivingAmqpLink>();
+      try
+      {
+        await _recycleLock.WaitAsync();
+        linksThatShouldBeClosed.AddRange(_closedReceivers.Select(cr => cr.GetCurrentlyOpenedLink()).Where(l => l != null));
+      }
+      finally
+      {
+        _recycleLock.Release();
+      }
+
+      Console.WriteLine("LinksThatShouldBeClosed=" + linksThatShouldBeClosed.Count);
+      var unsettledMessages = linksThatShouldBeClosed.Select(l => l.GetInternalProperty<ReceivingAmqpLink, Dictionary<ArraySegment<byte>, Delivery>>("UnsettledMap"));
+
+      Console.WriteLine("UnsettledMessageCount=" + unsettledMessages.Select(um => um.Count).Sum());
+      //foreach(var message in unsettledMessages.SelectMany(um => um.Values))
+      //{
+      //  Console.Wiretmessage.DeliveryId
+      //}
     }
   }
 }

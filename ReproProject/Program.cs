@@ -20,9 +20,23 @@ namespace ReproProject
 
       var wrapper = await AzureServiceBusWrapper.InitializeAsync(config);
 
-      Console.WriteLine("Press any key to shut down and exit...");
-      Console.ReadKey();
+      bool shutdown = false;
+      while (!shutdown)
+      {
+        Console.WriteLine("Press d to print diagnostics or press any other key to shut down and exit...");
+        var key = Console.ReadKey();
+        Console.WriteLine();
+        if (key.KeyChar == 'd')
+        {
+          await wrapper.PrintRecycledReceiversDiagnosticsAsync();
+        }
+        else
+        {
+          shutdown = true;
+        }
+      }
 
+      Console.WriteLine("Shutting down...");
       await wrapper.ShutdownAsync();
     }
   }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Azure.Amqp;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Azure.ServiceBus.Primitives;
@@ -43,5 +44,18 @@ namespace ReproProject
     {
       return _receiver.CloseAsync();
     }
+
+    public ReceivingAmqpLink GetCurrentlyOpenedLink()
+    {
+      var linkWrapper = ((MessageReceiver)_receiver).GetInternalProperty<MessageReceiver, FaultTolerantAmqpObject<ReceivingAmqpLink>>("ReceiveLinkManager");
+
+      if (linkWrapper.TryGetOpenedObject(out var link))
+      {
+        return link;
+      }
+
+      return null;
+    }
+
   }
 }
