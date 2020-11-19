@@ -159,18 +159,23 @@ namespace ReproProject
 
     public async Task PrintRecycledReceiversDiagnosticsAsync()
     {
-      List<ReceivingAmqpLink> linksThatShouldBeClosed = new List<ReceivingAmqpLink>();
+      var closedReceivers = new List<AzureServiceBusReceiver>();
       try
       {
         await _recycleLock.WaitAsync();
-        linksThatShouldBeClosed.AddRange(_closedReceivers.Select(cr => cr.GetCurrentlyOpenedLink()).Where(l => l != null));
+        closedReceivers.AddRange(_closedReceivers);
       }
       finally
       {
         _recycleLock.Release();
       }
 
+      var notClosedReceivers = closedReceivers.Where(cr => !cr.IsInnerReceiverClosedOrClosing()).ToList();
+      Console.WriteLine("ReceiversThatShouldBeClosed=" + notClosedReceivers.Count);
+
+      var linksThatShouldBeClosed = closedReceivers.Where(cr => cr.IsInnerReceiverClosedOrClosing()).Select(cr => cr.GetCurrentlyOpenedLink()).Where(l => l != null).ToList();
       Console.WriteLine("LinksThatShouldBeClosed=" + linksThatShouldBeClosed.Count);
+
       var unsettledMessages = linksThatShouldBeClosed.Select(l => l.GetInternalProperty<ReceivingAmqpLink, Dictionary<ArraySegment<byte>, Delivery>>("UnsettledMap"));
       Console.WriteLine("UnsettledMessageCount=" + unsettledMessages.Select(um => um.Count).Sum());
     }

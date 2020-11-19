@@ -56,6 +56,11 @@ namespace ReproProject
       return _receiver.CloseAsync();
     }
 
+    public bool IsInnerReceiverClosedOrClosing()
+    {
+      return _receiver.IsClosedOrClosing;
+    }
+
     public ReceivingAmqpLink GetCurrentlyOpenedLink()
     {
       var linkWrapper = ((MessageReceiver)_receiver).GetInternalProperty<MessageReceiver, FaultTolerantAmqpObject<ReceivingAmqpLink>>("ReceiveLinkManager");
