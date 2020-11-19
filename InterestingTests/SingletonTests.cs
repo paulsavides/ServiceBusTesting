@@ -26,7 +26,6 @@ namespace InterestingTests
       createTcs.SetResult(new object());
       await creating;
 
-      var createdObj = GetInternalProperty<object>(singleton, "Value");
       try
       {
         await singleton.GetOrCreateAsync(TimeSpan.FromDays(1000));
@@ -34,6 +33,7 @@ namespace InterestingTests
       }
       catch (ObjectDisposedException) { }
 
+      var createdObj = GetInternalProperty<object>(singleton, "Value");
       createdObj.Should().BeNull("A closed Singleton shouldn't have a value!");
     }
 
