@@ -22,6 +22,7 @@ namespace ReproAmqp
 
     private readonly Config _config;
 
+    private int TotalTestsCounter = 0;
     private int GotOpenConnectionCounter = 0;
     private int GotClosedConnectionCounter = 0;
     private int UnsuccessfulManagerCloseCounter = 0;
@@ -60,6 +61,11 @@ namespace ReproAmqp
           {
             managerClosed = true;
           }
+
+          // give it a bit in case it is closing it in the background
+          await Task.Delay(100);
+
+          ++TotalTestsCounter;
 
           if (!managerClosed)
           {
@@ -100,7 +106,7 @@ namespace ReproAmqp
 
     private void PrintStats()
     {
-      Console.WriteLine($"Overall stats: GotClosedConnection={GotClosedConnectionCounter} GotOpenConnection={GotOpenConnectionCounter} " +
+      Console.WriteLine($"Overall stats: TotalTests={TotalTestsCounter} GotClosedConnection={GotClosedConnectionCounter} GotOpenConnection={GotOpenConnectionCounter} " +
         $"UnsuccessfulManagerCloseCounter={UnsuccessfulManagerCloseCounter}");
     }
   }
