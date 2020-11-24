@@ -104,7 +104,7 @@ namespace ReproProject
       try
       {
         cancellationToken.ThrowIfCancellationRequested();
-        Console.WriteLine("Recieved MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
+        Console.WriteLine("Received MessageId=[{0}] MessageBody=[{1}]", message.MessageId, Encoding.UTF8.GetString(message.Body));
         await receiver.CompleteAsync(message.SystemProperties.LockToken);
       }
       catch (Exception ex)
